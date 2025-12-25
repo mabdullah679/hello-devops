@@ -1,0 +1,10 @@
+.github/workflows meaning:
+    {
+    subdir where ci/cd workflows live and where github expects workflow files to live to integrate
+    seamlessly.       
+    }
+
+ci.yml meaning:
+    {
+    continuous integration file. could be named anything but better to name it representatively.
+    }

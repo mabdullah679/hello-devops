@@ -1,0 +1,68 @@
+FROM: base image with python runtime
+
+WORKDIR: subdir inside the container where the process runs
+
+COPY: puts the code from specified dir/file to specified subdir inside container
+
+EXPOSE: documentation/default port (doesn't publish it by itself; have to define)
+
+CMD: the default process (PID 1) when the container runs 
+think of CMD like "init the required app's intended program."
+
+"docker build -t hello-devops:local ." meaning:
+    {
+    calls docker cli, requests a build, -t tags the image as "hello-devops:local" 
+    "." sets the CWD as the build context path. 
+    it says "build it here" 
+    Should include a ".dockerignore" for dirs with lots of metadata (like .venv/etc.)
+    }
+
+"docker run --rm -p 8080:8080 hello-devops:local" meaning:
+    {
+
+    docker cli runs: 
+
+        "--rm" to automatically delete the container filesystem/metadata
+         when it is stopped (ctrl + c'd etc.)
+        
+        "-p 8080:8080" publish/map ports to host_port:container_port
+         "left 8080" port on my laptop (host)
+         "right 8080" port inside the container (where the containerized app listens)
+         
+         "hello-devops:local" the image name:tag to run
+    }
+
+    expected behavior:
+    {
+    without having exported the REQUIRED_TOKEN environment variable in the docker 
+    run command, the server should respond:
+        INFO - REQUIRED_TOKEN is missing
+    }
+    
+    test command:
+
+    curl -i http://localhost:8080/health (should output error 500 as per app.py)
+
+"docker run --rm -p 8080:8080 -e REQUIRED_TOKEN=1 hello-devops:local" meaning:
+    {
+    -e "environment" tag and pass the environment variable for the app's expected behavior
+    }
+    
+    expected behavior:
+    {
+    curl the health endpoint (http://localhost:8080/health) and expect 200 OK with header 
+    "Content-Type: text/plain; charset=utf-8 healthy"
+    }
+
+
+"docker run --rm -p 8080:8080 --env-file .env hello-devops:local" meaning:
+    {
+    "--env-file .env" loads KEY=VALUE lines from .env on the host and passes them as 
+    environment variables into the container at runtime ––
+    (path is relative to CWD unless you specify otherwise).
+    }
+
+    expected behavior:
+    {
+    
+    }

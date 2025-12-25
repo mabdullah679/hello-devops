@@ -1,0 +1,31 @@
+COMMAND RAN: set -a; source .env; set +a; python3 app.py
+
+    ANNOTATIONS:
+
+    {
+        "set -a" meaning 
+            {
+            turns on "allexport" essentially allowing any future CLI commands to be 
+            exported automatically to the environment
+            }
+
+        "source .env" meaning
+            {
+            source reads and executes the passed argument ".env" in the current shell
+            whatever ".env" contains is "executed" in the file's execution sense. 
+            for ".env" that means to export any defined shell variables inside that .env file
+            }
+
+        "set +a" meaning
+            {
+            turns "allexport" back off so no more variables are exported
+            }
+        
+        "python3 app.py" meaning
+            {
+            Uses python3 package manager to start python as a child process of the 
+            shell (the same one "allexporting", sourcing, and "de-allexporting")
+            instead of running app.py separately 
+            (wouldn't have access to the environment variables exported earlier) 
+            }
+    }

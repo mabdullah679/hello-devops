@@ -8,3 +8,9 @@ ci.yml meaning:
     {
     continuous integration file. could be named anything but better to name it representatively.
     }
+
+    expected behavior:
+    {
+    if all syntax is proper, and conditions are met, the ci.yml (as per the name) essentially
+    prepares a deliverable app integrating all features into a build ready for shipment.
+    }

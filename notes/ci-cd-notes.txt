@@ -13,4 +13,7 @@ ci.yml meaning:
     {
     if all syntax is proper, and conditions are met, the ci.yml (as per the name) essentially
     prepares a deliverable app integrating all features into a build ready for shipment.
+    
+    in order to have a shippable product (image), the ci best practice is to build and push to
+    a container registry (GHCR for hello-devops project)
     }

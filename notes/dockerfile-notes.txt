@@ -64,5 +64,7 @@ think of CMD like "init the required app's intended program."
 
     expected behavior:
     {
+    loads the environment variables from the passed .env file. 
     
+    better than one-by-one key=value pairs when initially running the container.
     }

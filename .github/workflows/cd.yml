@@ -29,6 +29,9 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
+
       - name: Build and push image (Artifact Registry)
         uses: docker/build-push-action@v6
         with:

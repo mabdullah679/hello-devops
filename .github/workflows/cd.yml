@@ -44,17 +44,19 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with: 
           project_id: ${{ env.project_ID }}
-        
+    
+      - name: Enable Cloud Run API
+        run: gcloud services enable run.google.apis.com --project $PROJECT_ID
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
-          --project $PROJECT_ID \
-          --region $REGION \
-          --image $IMAGE:${{ github.sha }}
-          --platform-managed \
-          --allow-unauthenticated \
-          --set-env-vars REQUIRED_TOKEN=1 \
-          --mix-instances 0 \
-          --max-instances 1 \
-          --memory 256Mi \
-          --cpu 1
+            --project $PROJECT_ID \
+            --region $REGION \
+            --image $IMAGE:${{ github.sha }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars REQUIRED_TOKEN=1 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --memory 256Mi \
+            --cpu 1

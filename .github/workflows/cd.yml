@@ -1,6 +1,6 @@
 name: cd
 
-on: 
+on:
   workflow_dispatch:
 
 permissions:
@@ -8,10 +8,10 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/hello-devops
-  SERVICE: hello-devops
   REGION: ${{ secrets.GCP_REGION }}
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  SERVICE: hello-devops
+  AR_IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/hello-devops/hello-devops
 
 jobs:
   deploy:
@@ -19,38 +19,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log into GHCR
-        uses: docker/login-action@v3
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Build and push image
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Build and push image (Artifact Registry)
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ env.IMAGE }}:latest
-
-      - name: Auth to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-    
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with: 
-          project_id: ${{ env.project_ID }}
+            ${{ env.AR_IMAGE }}:${{ github.sha }}
+            ${{ env.AR_IMAGE }}:latest
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \
             --project $PROJECT_ID \
             --region $REGION \
-            --image $IMAGE:${{ github.sha }} \
+            --image $AR_IMAGE:${{ github.sha }} \
             --platform managed \
             --allow-unauthenticated \
             --set-env-vars REQUIRED_TOKEN=1 \

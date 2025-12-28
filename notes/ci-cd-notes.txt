@@ -17,3 +17,10 @@ ci.yml meaning:
     in order to have a shippable product (image), the ci best practice is to build and push to
     a container registry (GHCR for hello-devops project)
     }
+
+cd.yml meaning:
+
+  {
+  repetable workflow file to continuously deploy a built app to specified infrastructure 
+  (typically cloud).
+  }

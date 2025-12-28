@@ -44,9 +44,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with: 
           project_id: ${{ env.project_ID }}
-    
-      - name: Enable Cloud Run API
-        run: gcloud services enable run.google.apis.com --project $PROJECT_ID
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE \

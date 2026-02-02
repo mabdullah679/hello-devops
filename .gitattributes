@@ -1,0 +1,5 @@
+# Keep Unix line endings for shell scripts
+*.sh text eol=lf
+
+# Keep PowerShell scripts as Windows line endings (optional)
+*.ps1 text eol=crlf

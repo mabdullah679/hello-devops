@@ -1,0 +1,55 @@
+Goal: Understand ps1 scripting syntax (basic)
+
+Start the script file off with the following block:
+
+Param(
+    [param_data_type]$Key = "Value in quotes if string"
+    [n_params] ... 
+)
+
+An essential component to a successful ps1 script is:
+
+    --
+
+    $ErrorActionPreference = "Stop"
+
+    --
+
+    meaning {
+        which tells PowerShell that a non-terminating error should 
+        be treated as a terminating error. 
+    }
+
+    Context {
+        PowerShell has errors that don't automatically stop 
+        executing (constant printing, etc.)
+        }
+
+    Solution {
+        In automation applications (scripts) a fast fail 
+        is preferred over a half-brokens automated state.
+    }
+
+    Related Knobs you see:
+        code {
+            -ErrorAction Stop
+             }
+        meaning {
+            Same idea, but only for a single command 
+                }
+    
+    The default behavior is "Continue" which tells the script/command
+    to write the error, and go onto the next statement in the
+    script.
+
+
+Next, you have the actual command(s) you want the script to run.
+
+They typically look like this:
+
+tool_name ([arguments the tool expects]) 
+  --$[parameter(s) previously defined] 
+^^note: indent is TWO spaces, if the command is multiple lines,
+it uses "--command" syntax
+
+n_commands

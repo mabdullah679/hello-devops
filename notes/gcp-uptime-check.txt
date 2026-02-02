@@ -1,0 +1,13 @@
+Purpose: self-explanatory
+
+Inputs (basic)
+
+- can define protocol, resource type (what to hit), and frequency
+- provide uptime information on deployed services
+- takes the URL of the deployed service and endpoint to hit
+- configurable period between each check to optimize noise/cost 
+- configurable response timeout (if response takes longer than x,
+  timeout the request)
+- configurable content matching (contains/missing in response,
+  custom text input to define exactly what the response should 
+  include)

@@ -6,6 +6,7 @@ name: cd
 on:
   push:
     branches: [prod-hardening]
+    paths-ignore: ['**.md', '**.txt', 'notes/**']
   workflow_dispatch:
 
 concurrency:

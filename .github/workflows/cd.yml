@@ -1,56 +1,133 @@
 name: cd
 
+# build -> terraform fmt/validate/plan -> apply -> smoke test, on AWS.
+# Authenticates with GitHub OIDC (no stored AWS keys): the role's trust policy
+# only admits this repo on refs/heads/prod-hardening.
 on:
+  push:
+    branches: [prod-hardening]
+    paths-ignore: ['**.md', '**.txt', 'notes/**']
   workflow_dispatch:
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
 
 permissions:
   contents: read
-  packages: write
+  id-token: write # request the OIDC token
 
 env:
-  REGION: ${{ secrets.GCP_REGION }}
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE: hello-devops
-  AR_IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/hello-devops/hello-devops
+  AWS_REGION: ap-southeast-2
+  ECR_REPO: pf-hello-devops
+  DEPLOY_ROLE: arn:aws:iam::346208529954:role/pf-hello-devops-github-deploy
 
 jobs:
-  deploy:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: checks
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Auth to GCP
-        uses: google-github-actions/auth@v2
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker $REGION-docker.pkg.dev --quiet
-
-      - name: Build and push image (Artifact Registry)
+          role-to-assume: ${{ env.DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Confirm account
+        run: test "$(aws sts get-caller-identity --query Account --output text)" = "346208529954"
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - id: meta
+        run: echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Already pushed? (tags are immutable)
+        id: exists
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPO" --image-ids imageTag=${{ steps.meta.outputs.tag }} >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-buildx-action@v3
+        if: steps.exists.outputs.found == 'false'
+      - name: Build and push
+        if: steps.exists.outputs.found == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            ${{ env.AR_IMAGE }}:${{ github.sha }}
-            ${{ env.AR_IMAGE }}:latest
+          build-args: APP_VERSION=${{ steps.meta.outputs.tag }}
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Deploy to Cloud Run
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.out.outputs.url }}
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -input=false
+      - run: terraform validate
+      - name: Plan
+        run: terraform plan -input=false -lock-timeout=60s -var "image_tag=${{ needs.build.outputs.tag }}" -out=tfplan
+      - name: Plan summary
         run: |
-          gcloud run deploy $SERVICE \
-            --project $PROJECT_ID \
-            --region $REGION \
-            --image $AR_IMAGE:${{ github.sha }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --set-env-vars REQUIRED_TOKEN=1 \
-            --min-instances 0 \
-            --max-instances 1 \
-            --memory 256Mi \
-            --cpu 1
+          {
+            echo '### terraform plan'
+            echo '```'
+            terraform show -no-color tfplan | grep -E '^(Plan:|No changes)|will be (created|updated|destroyed|replaced)' || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Apply (rolling ECS deploy; waits for steady state, circuit breaker rolls back)
+        run: terraform apply -input=false -lock-timeout=60s tfplan
+      - id: out
+        run: echo "url=$(terraform output -raw url)" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      URL: ${{ needs.deploy.outputs.url }}
+    steps:
+      - name: Wait for the service to answer
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$URL/healthz" || true)
+            [ "$code" = 200 ] && exit 0
+            echo "attempt $i: HTTP $code"; sleep 10
+          done
+          echo "service never became healthy" >&2; exit 1
+      - name: Smoke assertions
+        run: |
+          set -eu
+          check() { # name expected_code path [curl args...]
+            name=$1; want=$2; path=$3; shift 3
+            got=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$@" "$URL$path")
+            echo "$name: $path -> $got (want $want)"
+            [ "$got" = "$want" ]
+          }
+          check index 200 /
+          check healthz 200 /healthz
+          check readyz 200 /readyz
+          check "admin without token is refused" 401 /admin/chaos
+          check "unknown path" 404 /nope
+          curl -sI -m 5 "$URL/healthz" | grep -i '^x-content-type-options: nosniff'
+          echo "response body:"; curl -s -m 5 "$URL/"
+          curl -s -m 5 "$URL/" | grep -q "\"version\": \"${GITHUB_SHA}\""

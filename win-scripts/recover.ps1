@@ -1,17 +1,6 @@
-param(
-  [string]$ProjectId = "hello-devops-482600",
-  [string]$Service = "hello-devops",
-  [string]$Region = "us-east1",
-  [string]$Token = "1"
-)
-
+# Clear chaos mode: health returns to 200.
 $ErrorActionPreference = "Stop"
-
-gcloud run services update $Service `
-  --project $ProjectID `
-  --region $Region `
-  --set-env-vars REQUIRED_TOKEN=$Token
-
-$url = gcloud run services describe $Service --project $ProjectId --region $Region --format "value(status.url)"
-Write-Host "URL: $url"
-curl.exe -i "$url/health"
+. "$PSScriptRoot\_common.ps1"
+Set-Chaos "recover"
+Start-Sleep -Seconds 4
+Show-Probe

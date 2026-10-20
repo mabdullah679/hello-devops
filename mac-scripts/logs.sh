@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
+# Recent app logs from CloudWatch (JSON lines). LIMIT minutes of history via SINCE (default 15m).
 set -euo pipefail
-
-PROJECT_ID="${PROJECT_ID:-hello-devops-482600}"
-SERVICE="${SERVICE:-hello-devops}"
-LIMIT="${LIMIT:-50}"
-
-gcloud logging read \
-  "resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE}" \
-  --project "$PROJECT_ID" \
-  --limit "$LIMIT" \
-  --format "value(timestamp,textPayload)"
+export AWS_REGION="${AWS_REGION:-ap-southeast-2}"
+NAME_PREFIX="${NAME_PREFIX:-pf-hello-devops}"
+aws logs tail "/ecs/${NAME_PREFIX}" --since "${SINCE:-15m}" --format short

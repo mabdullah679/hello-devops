@@ -1,2 +1,8 @@
-.venv
-
+.venv/
+.env
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+__pycache__/
+*.pyc

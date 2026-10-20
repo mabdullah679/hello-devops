@@ -1,0 +1,7 @@
+line-length = 110
+target-version = "py313"
+[lint]
+select = ["E", "F", "W", "B", "S", "UP"]
+ignore = ["S104"]  # binding 0.0.0.0 is intended inside a container
+[lint.per-file-ignores]
+"tests/*" = ["S"]

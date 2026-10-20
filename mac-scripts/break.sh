@@ -1,20 +1,7 @@
 #!/usr/bin/env bash
+# Put the service into chaos mode: /healthz and /readyz start returning 503 on every task.
 set -euo pipefail
-
-PROJECT_ID="${PROJECT_ID:-hello-devops-482600}"
-REGION="${REGION:-us-east1}"
-SERVICE="${SERVICE:-hello-devops}"
-
-gcloud run services update "$SERVICE" \
-  --project "$PROJECT_ID" \
-  --region "$REGION" \
-  --set-env-vars REQUIRED_TOKEN=
-
-URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
-if [[ -z "$URL" ]]; then
-  echo "No Cloud Run URL found for service '$SERVICE'." >&2
-  exit 1
-fi
-
-echo "URL: $URL"
-curl -i "$URL/health"
+source "$(dirname "$0")/_common.sh"
+set_chaos break
+sleep 4 # the app caches the flag for up to 3s
+probe

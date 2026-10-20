@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
+# Probe the service, show target health behind the ALB and alarm states.
 set -euo pipefail
-
-PROJECT_ID="${PROJECT_ID:-hello-devops-482600}"
-REGION="${REGION:-us-east1}"
-SERVICE="${SERVICE:-hello-devops}"
-
-URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
-if [[ -z "$URL" ]]; then
-  echo "No Cloud Run URL found for service '$SERVICE'." >&2
-  exit 1
+source "$(dirname "$0")/_common.sh"
+probe
+curl -s -m 5 "$URL/"
+TG="$(terraform -chdir="$ROOT/infra" output -raw target_group 2>/dev/null || true)"
+if [[ -n "$TG" ]]; then
+  echo "Target health:"
+  aws elbv2 describe-target-health --target-group-arn "$TG" \
+    --query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text
 fi
-
-echo "URL: $URL"
-curl -i "$URL/health"
+echo "Alarms:"
+aws cloudwatch describe-alarms --alarm-name-prefix "$NAME_PREFIX" \
+  --query 'MetricAlarms[].[AlarmName,StateValue]' --output text

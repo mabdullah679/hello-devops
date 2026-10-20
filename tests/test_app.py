@@ -37,7 +37,9 @@ class ServerCase(unittest.TestCase):
         self.state = app.State(app.Chaos(self.store, cache_seconds=0), self.token)
         self.server = app.make_server(self.state, "127.0.0.1", 0)
         self.port = self.server.server_address[1]
-        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True).start()
+        threading.Thread(
+            target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+        ).start()
 
     def tearDown(self):
         self.server.shutdown()
@@ -157,7 +159,8 @@ class ChaosStoreTests(unittest.TestCase):
 
         now = [0.0]
         chaos = app.Chaos(Store(), cache_seconds=3, clock=lambda: now[0])
-        chaos.is_broken(); chaos.is_broken(); chaos.is_broken()
+        for _ in range(3):
+            chaos.is_broken()
         self.assertEqual(len(calls), 1)
         now[0] = 3.5
         chaos.is_broken()

@@ -1,0 +1,30 @@
+AWS uptime check (replaces the GCP uptime check note)
+
+What it is: two independent signals that the service is up.
+
+1. ALB health check (target group): every 10s the load balancer GETs /readyz
+   on each task. 2 consecutive failures = task marked unhealthy and taken out
+   of rotation (ECS then replaces it). Defined in infra/alb.tf.
+
+2. Synthetic check (infra/lambda/synthetic.py): a Lambda run every minute by
+   EventBridge. It calls the PUBLIC ALB URL (/healthz) from outside the VPC,
+   like a real user, and publishes the metric <prefix>/Synthetic Up = 1 or 0
+   plus LatencyMs.
+
+Mapping from the GCP uptime check inputs:
+- protocol / resource / path     -> HTTP, the ALB DNS name, /healthz
+- period between checks          -> rate(1 minute)
+- response timeout               -> TIMEOUT_SECONDS=5 (Lambda env var)
+- content matching               -> MATCH_TEXT: body must contain "status": "ok"
+                                    in addition to HTTP 200
+
+Alarms (infra/monitoring.tf), all notify the SNS topic <prefix>-alerts:
+- <prefix>-5xx                 any 5xx from targets OR from the ALB itself in 1 min
+- <prefix>-unhealthy-targets   UnHealthyHostCount >= 1
+- <prefix>-synthetic-down      Up < 1 for 2 consecutive minutes; missing data
+                               counts as BREACHING so a dead checker cannot
+                               look like a healthy service
+
+The SNS topic has no subscriber unless var.alert_email is set (email
+subscriptions must be confirmed by hand), so alarms are visible in the
+CloudWatch console / aws cloudwatch describe-alarms but are not delivered.

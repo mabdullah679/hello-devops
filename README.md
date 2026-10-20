@@ -119,7 +119,7 @@ Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Content-Sec
 
 ## Deployed on AWS
 
-Verified 2026-10-20 (account 346208529954, ap-southeast-2).
+Verified live on 2026-10-20 (account 346208529954, ap-southeast-2), then torn down the same day to save cost. The URL below no longer responds (curl timed out after the teardown). Evidence captured while it was live:
 
 - URL pattern: `http://pf-hello-devops-alb-<id>.ap-southeast-2.elb.amazonaws.com` (the ALB DNS name is regenerated on every rebuild).
 - Pipeline: GitHub Actions run 39389376156 on `prod-hardening` (checks, build, deploy, smoke all green; `Plan: 40 to add`, `Apply complete! Resources: 40 added`), then run 39389403002 on the next commit, a second rolling deploy, also green. AWS auth was OIDC only. The bootstrap stack (state bucket, ECR, deploy role) was applied by hand locally, as it has to exist first.
@@ -142,7 +142,8 @@ Verified 2026-10-20 (account 346208529954, ap-southeast-2).
   The synthetic Lambda logged `{"up": 0, "reason": "status 503"}` during the break.
 - Resources (40 in Terraform state): VPC, 2 subnets, IGW, route table, 2 security groups plus locked default SG, ALB + target group + listener, ECS cluster / task definition / service, 3 IAM roles + policies (all with the permissions boundary), 2 SSM parameters, 2 log groups, SNS topic, 3 alarms, Lambda + EventBridge rule/target/permission. Bootstrap adds: S3 state bucket, ECR repo + lifecycle policy, deploy role.
 - Cost estimate (list-price arithmetic, not an invoice): ALB ~$0.03/h, 2 Fargate tasks (0.25 vCPU / 0.5 GB) ~$0.03/h, 4 public IPv4 addresses ~$0.02/h, the rest negligible: roughly $0.09/h, about $2.2/day.
-- Teardown and rebuild: `make destroy` (stack) then `make destroy-bootstrap` (last). Rebuild: `make bootstrap` once, then `make rebuild`.
+- Teardown (done 2026-10-20): `terraform destroy` of the main stack (40 resources removed across two runs) and then of the bootstrap stack (state bucket with its versions, ECR repo with images, deploy role). The shared GitHub OIDC provider and `portfolio-ci-boundary` policy were left alone. Afterwards no pf-hello-devops ALB, target group, ECS cluster, ECR repo, S3 bucket, log group, Lambda, alarm, SNS topic, SSM parameter, IAM role, EventBridge rule or VPC remained. ECS keeps a record of the cluster, service and task definitions as INACTIVE (the task definitions were then deleted); the tagging API lagged and still listed these stale entries minutes later.
+- Rebuild from nothing: `make bootstrap` (one-time, prompts to approve), then `make rebuild` (runs the pipeline: build, plan, apply, smoke test). The first apply needs the state bucket, ECR repo and OIDC deploy role from bootstrap to exist. The ALB URL will be different.
 
 Not established: circuit-breaker rollback (it is configured in `infra/ecs.tf` but no failing deploy was pushed to watch it trigger); SNS email delivery (no subscriber); behaviour under load; the Windows scripts; any browser rendering (the service returns JSON only; all checks were curl).
 

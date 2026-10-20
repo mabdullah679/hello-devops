@@ -3,8 +3,8 @@ $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\_common.ps1"
 Show-Probe
 (Invoke-WebRequest -Uri "$Url/" -UseBasicParsing).Content
-$tg = terraform "-chdir=$Root/infra" output -raw target_group 2>$null
-if ($tg) {
+$tg = aws elbv2 describe-target-groups --names "$NamePrefix-tg" --query 'TargetGroups[0].TargetGroupArn' --output text 2>$null
+if ($tg -and $tg -ne "None") {
   Write-Host "Target health:"
   aws elbv2 describe-target-health --target-group-arn $tg --query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text
 }

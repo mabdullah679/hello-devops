@@ -4,8 +4,9 @@ set -euo pipefail
 source "$(dirname "$0")/_common.sh"
 probe
 curl -s -m 5 "$URL/"
-TG="$(terraform -chdir="$ROOT/infra" output -raw target_group 2>/dev/null || true)"
-if [[ -n "$TG" ]]; then
+TG="$(aws elbv2 describe-target-groups --names "${NAME_PREFIX}-tg" \
+  --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+if [[ -n "$TG" && "$TG" != None ]]; then
   echo "Target health:"
   aws elbv2 describe-target-health --target-group-arn "$TG" \
     --query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output text

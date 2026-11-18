@@ -23,7 +23,7 @@ WHAT THE APP DOES
 - Every answer carries basic browser safety headers and a request ID. Logs are one JSON line per request.
 
 TESTS
-17 automated tests start the real server and check all of the above, with a pretend AWS. No network needed. To be sure the tests actually guard something, seven different pieces of protection were removed one at a time (password check, break handling, shutdown handling, size limit, input check, disabled-admin rule, safety headers) and every time the tests failed as they should; each edit was then put back.
+17 automated tests start the real server and check all of the above, with a pretend AWS. No network needed. To be sure the tests actually guard something, seven different pieces of protection were removed one at a time (password check, break handling, shutdown handling, size limit, input check, disabled-admin rule, safety headers) and every time the tests failed as they should; each edit was then put back. On 2026-11-18 three of those seven (password check, break handling, shutdown handling) were re-run and failed as expected again. A separate automatic scan for leaked secrets (gitleaks) now runs on every push.
 
 DESIGN CHOICES THAT ARE NOT OBVIOUS
 - The broken/ok flag lives in one shared AWS parameter, so breaking affects both copies of the app and survives a restart. The side effect is that while broken, AWS keeps replacing the sick copies, which you can see in the timeline.

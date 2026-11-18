@@ -84,7 +84,7 @@ Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Content-Sec
 
 - `make test` or `python3 -m unittest discover -s tests -v`. 17 tests that start a real HTTP server on an ephemeral port with a fake SSM client. No AWS or network needed.
 - Covered: probe semantics, break/recover round trip, auth, input validation, body limit, store outage, cache behaviour, security headers, JSON log shape, token never logged.
-- Mutation-checked: each of these edits was applied to `app.py` and the suite went red, then the exact edit was reversed: auth check bypassed, `/healthz` ignoring chaos, `/readyz` ignoring draining, body limit removed, state validation removed, admin-open-when-no-token, security headers dropped (7 of 7 caught).
+- Mutation-checked: each of these edits was applied to `app.py` and the suite went red, then the exact edit was reversed: auth check bypassed, `/healthz` ignoring chaos, `/readyz` ignoring draining, body limit removed, state validation removed, admin-open-when-no-token, security headers dropped (7 of 7 caught). Re-run on 2026-11-18: the auth, `/healthz` and `/readyz`-draining edits went red again (3 of 7); the other four are as originally recorded.
 - CI additionally builds the image, runs it, probes `/livez` `/healthz` `/readyz` and asserts it does not run as root.
 
 ## Layout
@@ -101,7 +101,7 @@ Every response carries `X-Content-Type-Options`, `X-Frame-Options`, `Content-Sec
 | [`infra/monitoring.tf`](infra/monitoring.tf) | 3 alarms, SNS topic, synthetic-check Lambda + schedule |
 | [`infra/lambda/synthetic.py`](infra/lambda/synthetic.py) | the synthetic check |
 | [`infra/bootstrap/main.tf`](infra/bootstrap/main.tf) | state bucket, ECR, GitHub OIDC deploy role (local state) |
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`cd.yml`](.github/workflows/cd.yml) | the pipeline |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`cd.yml`](.github/workflows/cd.yml), [`secrets-scan.yml`](.github/workflows/secrets-scan.yml) | the pipeline plus a gitleaks scan on every push and PR |
 | [`mac-scripts/`](mac-scripts), [`win-scripts/`](win-scripts) | break / recover / status / logs |
 | [`notes/aws-uptime-check.txt`](notes/aws-uptime-check.txt) | how the uptime check maps from the old GCP notes |
 | [`Makefile`](Makefile) | test, run, bootstrap, rebuild, destroy |

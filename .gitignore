@@ -7,3 +7,6 @@ crash.log
 __pycache__/
 *.pyc
 infra/.build/
+.DS_Store
+.idea/
+.vscode/
